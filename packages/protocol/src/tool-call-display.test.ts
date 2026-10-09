@@ -98,7 +98,24 @@ describe("shared tool-call display mapping", () => {
       },
     });
 
-    expect(display.errorText).toBe('{\n  "message": "boom"\n}');
+    expect(display.errorText).toBe("boom");
+  });
+
+  it.each([
+    ["plain diagnostic", "plain diagnostic"],
+    [{ message: "message", content: "other details" }, "message"],
+    [{ error: "error diagnostic" }, "error diagnostic"],
+    [{ content: "content diagnostic" }, "content diagnostic"],
+    [new Error("exception diagnostic"), "exception diagnostic"],
+    [{ code: 42 }, '{\n  "code": 42\n}'],
+  ])("preserves readable error diagnostics", (error, expected) => {
+    const display = buildToolCallDisplayModel({
+      name: "tool",
+      status: "failed",
+      error,
+      detail: { type: "unknown", input: null, output: null },
+    });
+    expect(display.errorText).toBe(expected);
   });
 
   it("labels terminal interaction rows without a summary when no command is available", () => {

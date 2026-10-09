@@ -2697,6 +2697,40 @@ describe("ACPAgentSession", () => {
     expect(assistantMessages[2].messageId).not.toBe(assistantMessages[0].messageId);
   });
 
+  test.each([
+    [
+      undefined,
+      "error: progress checkpoint is not required",
+      "error: progress checkpoint is not required",
+    ],
+    [{ message: "specific raw diagnostic" }, "display summary", "specific raw diagnostic"],
+    [undefined, undefined, "Tool call failed"],
+  ])("retains the best available ACP failure diagnostic", async (rawOutput, text, reason) => {
+    const session = createSession();
+    asInternals<ACPSessionInternals>(session).sessionId = "session-1";
+    const events: AgentStreamEvent[] = [];
+    session.subscribe((event) => events.push(event));
+    await session.sessionUpdate({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "tool_call",
+        toolCallId: "failed-call",
+        title: "Progress checkpoint",
+        kind: "think",
+        status: "failed",
+        ...(rawOutput === undefined ? {} : { rawOutput }),
+        content: text === undefined ? [] : [{ type: "content", content: { type: "text", text } }],
+      },
+    });
+    expect(events.find((event) => event.type === "timeline")).toMatchObject({
+      item: {
+        type: "tool_call",
+        status: "failed",
+        error: { message: reason },
+      },
+    });
+  });
+
   test("keeps ACP configuration notifications outside the turn lifecycle", async () => {
     const session = createSession();
     asInternals<ACPSessionInternals>(session).sessionId = "session-1";

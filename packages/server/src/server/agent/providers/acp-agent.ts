@@ -3527,7 +3527,12 @@ function mapToolSnapshotToTimeline(
     return {
       ...base,
       status: "failed",
-      error: { message: readErrorMessage(snapshot.rawOutput) },
+      error: {
+        message:
+          readErrorMessage(snapshot.rawOutput) ??
+          extractToolText(snapshot.content) ??
+          "Tool call failed",
+      },
     };
   }
   if (status === "completed") {
@@ -3883,12 +3888,12 @@ function buildShellCommand(record: Record<string, unknown> | null): string | und
   return args.length > 0 ? `${command} ${args.join(" ")}` : command;
 }
 
-function readErrorMessage(value: unknown): string {
+function readErrorMessage(value: unknown): string | undefined {
   if (typeof value === "string") {
-    return value;
+    return value.trim().length > 0 ? value : undefined;
   }
   const record = readRecord(value);
-  return readString(record, ["message", "error"]) ?? "Tool call failed";
+  return readString(record, ["message", "error"]);
 }
 
 function stringifyUnknown(value: unknown): string | undefined {

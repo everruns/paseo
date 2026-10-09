@@ -46,7 +46,6 @@ interface DetailStyles {
   scrollAreaFillStyle: StyleProp<ViewStyle>;
   scrollAreaStyle: StyleProp<ViewStyle>;
   jsonScrollCombined: StyleProp<ViewStyle>;
-  jsonScrollErrorCombined: StyleProp<ViewStyle>;
   fullBleedContainerStyle: StyleProp<ViewStyle>;
   loadingContainerStyle: StyleProp<ViewStyle>;
   resolvedMaxHeight: number | undefined;
@@ -108,7 +107,6 @@ function useDetailStyles(
     [resolvedMaxHeight],
   );
   const jsonScrollCombined = styles.jsonScroll;
-  const jsonScrollErrorCombined = [styles.jsonScroll, styles.jsonScrollError];
   const fullBleedContainerStyle = useMemo(
     () => [
       isFullBleed ? styles.fullBleedContainer : styles.paddedContainer,
@@ -128,7 +126,6 @@ function useDetailStyles(
     scrollAreaFillStyle,
     scrollAreaStyle,
     jsonScrollCombined,
-    jsonScrollErrorCombined,
     fullBleedContainerStyle,
     loadingContainerStyle,
     resolvedMaxHeight,
@@ -747,27 +744,41 @@ function buildDetailSections(
 }
 
 function ErrorSection({ errorText, ds }: { errorText: string; ds: DetailStyles }) {
-  const { t } = useTranslation();
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, styles.errorText]}>{t("toolCallDetails.error")}</Text>
-      <ScrollView
-        horizontal
-        nestedScrollEnabled
-        style={ds.jsonScrollErrorCombined}
-        contentContainerStyle={styles.jsonContent}
-        showsHorizontalScrollIndicator={true}
-      >
-        <Text
-          selectable
-          style={[styles.scrollText, styles.errorText]}
-          dataSet={CODE_SURFACE_DATASET}
-        >
-          {errorText}
-        </Text>
-      </ScrollView>
-    </View>
+    <ScrollView
+      nestedScrollEnabled
+      contentContainerStyle={styles.errorContent}
+      style={
+        ds.resolvedMaxHeight !== undefined &&
+        inlineUnistylesStyle({ maxHeight: ds.resolvedMaxHeight })
+      }
+    >
+      <Text selectable accessibilityRole="alert" style={styles.errorText}>
+        {errorText}
+      </Text>
+    </ScrollView>
   );
+}
+
+function detailWithoutDuplicateError(
+  detail: ToolCallDetail | undefined,
+  errorText: string | undefined,
+): ToolCallDetail | undefined {
+  if (!errorText) return detail;
+  // Remove only an exact diagnostic, never output with additional context.
+  // The error section keeps it readable without horizontal code scrolling.
+  const matches = (output: string | undefined) =>
+    typeof output === "string" && output.trim().replace(/^error:\s*/i, "") === errorText.trim();
+  switch (detail?.type) {
+    case "shell":
+      return matches(detail.output) ? { ...detail, output: undefined } : detail;
+    case "plain_text":
+      return matches(detail.text) ? { ...detail, text: undefined } : detail;
+    case "read":
+      return matches(detail.content) ? { ...detail, content: undefined } : detail;
+    default:
+      return detail;
+  }
 }
 
 function LoadingSkeleton({ containerStyle }: { containerStyle: StyleProp<ViewStyle> }) {
@@ -793,7 +804,8 @@ export function ToolCallDetailsContent({
   const ds = useDetailStyles(detail, resolvedMaxHeight, fillAvailableHeight);
   const diffLines = useDiffLines(detail);
 
-  const sections: ReactNode[] = buildDetailSections(toolName, detail, diffLines, ds, t);
+  const displayDetail = detailWithoutDuplicateError(detail, errorText);
+  const sections: ReactNode[] = buildDetailSections(toolName, displayDetail, diffLines, ds, t);
 
   if (errorText) {
     sections.push(<ErrorSection key="error" errorText={errorText} ds={ds} />);
@@ -986,14 +998,19 @@ const styles = StyleSheet.create((theme) => {
       borderRadius: theme.borderRadius.base,
       backgroundColor: theme.colors.surface2,
     },
-    jsonScrollError: {
-      borderColor: theme.colors.destructive,
-    },
     jsonContent: {
       padding: insets.padding,
     },
+    errorContent: {
+      paddingHorizontal: insets.padding,
+      paddingVertical: theme.spacing[2],
+    },
     errorText: {
       color: theme.colors.destructive,
+      fontFamily: theme.fontFamily.ui,
+      fontSize: theme.fontSize.sm,
+      lineHeight: 18,
+      ...(isWeb ? { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } : null),
     },
     emptyStateText: {
       color: theme.colors.foregroundMuted,

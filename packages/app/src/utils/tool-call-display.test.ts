@@ -132,7 +132,7 @@ describe("tool-call-display", () => {
       },
     });
 
-    expect(display.errorText).toBe('{\n  "message": "boom"\n}');
+    expect(display.errorText).toBe("boom");
   });
 
   it("shows terminal interaction with only the fixed label when no command is available", () => {
