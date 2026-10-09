@@ -759,23 +759,25 @@ function ErrorSection({ errorText, ds }: { errorText: string; ds: DetailStyles }
   );
 }
 
-function detailContainsError(detail: ToolCallDetail | undefined, errorText: string): boolean {
-  let output: string | undefined;
+function detailWithoutDuplicateError(
+  detail: ToolCallDetail | undefined,
+  errorText: string | undefined,
+): ToolCallDetail | undefined {
+  if (!errorText) return detail;
+  // Remove only an exact diagnostic, never output with additional context.
+  // The error section keeps it readable without horizontal code scrolling.
+  const matches = (output: string | undefined) =>
+    typeof output === "string" && output.trim().replace(/^error:\s*/i, "") === errorText.trim();
   switch (detail?.type) {
     case "shell":
-      output = detail.output;
-      break;
+      return matches(detail.output) ? { ...detail, output: undefined } : detail;
     case "plain_text":
-      output = detail.text;
-      break;
+      return matches(detail.text) ? { ...detail, text: undefined } : detail;
     case "read":
-      output = detail.content;
-      break;
+      return matches(detail.content) ? { ...detail, content: undefined } : detail;
+    default:
+      return detail;
   }
-  // Suppress only an exact diagnostic, never output with additional context.
-  return (
-    typeof output === "string" && output.trim().replace(/^error:\s*/i, "") === errorText.trim()
-  );
 }
 
 function LoadingSkeleton({ containerStyle }: { containerStyle: StyleProp<ViewStyle> }) {
@@ -801,9 +803,10 @@ export function ToolCallDetailsContent({
   const ds = useDetailStyles(detail, resolvedMaxHeight, fillAvailableHeight);
   const diffLines = useDiffLines(detail);
 
-  const sections: ReactNode[] = buildDetailSections(toolName, detail, diffLines, ds, t);
+  const displayDetail = detailWithoutDuplicateError(detail, errorText);
+  const sections: ReactNode[] = buildDetailSections(toolName, displayDetail, diffLines, ds, t);
 
-  if (errorText && !detailContainsError(detail, errorText)) {
+  if (errorText) {
     sections.push(<ErrorSection key="error" errorText={errorText} ds={ds} />);
   }
 

@@ -68,6 +68,9 @@ describe("tool failure details", () => {
     const container = mountFailure(`error: ${reason}`);
     await page.screenshot({ element: container });
     expect(container.textContent?.split(reason).length).toBe(2);
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toBe(reason);
+    expect(alert!.scrollWidth).toBeLessThanOrEqual(alert!.clientWidth);
   });
 
   it.each([
