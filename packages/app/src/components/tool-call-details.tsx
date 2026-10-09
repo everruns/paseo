@@ -46,7 +46,6 @@ interface DetailStyles {
   scrollAreaFillStyle: StyleProp<ViewStyle>;
   scrollAreaStyle: StyleProp<ViewStyle>;
   jsonScrollCombined: StyleProp<ViewStyle>;
-  jsonScrollErrorCombined: StyleProp<ViewStyle>;
   fullBleedContainerStyle: StyleProp<ViewStyle>;
   loadingContainerStyle: StyleProp<ViewStyle>;
   resolvedMaxHeight: number | undefined;
@@ -108,7 +107,6 @@ function useDetailStyles(
     [resolvedMaxHeight],
   );
   const jsonScrollCombined = styles.jsonScroll;
-  const jsonScrollErrorCombined = [styles.jsonScroll, styles.jsonScrollError];
   const fullBleedContainerStyle = useMemo(
     () => [
       isFullBleed ? styles.fullBleedContainer : styles.paddedContainer,
@@ -128,7 +126,6 @@ function useDetailStyles(
     scrollAreaFillStyle,
     scrollAreaStyle,
     jsonScrollCombined,
-    jsonScrollErrorCombined,
     fullBleedContainerStyle,
     loadingContainerStyle,
     resolvedMaxHeight,
@@ -747,26 +744,37 @@ function buildDetailSections(
 }
 
 function ErrorSection({ errorText, ds }: { errorText: string; ds: DetailStyles }) {
-  const { t } = useTranslation();
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, styles.errorText]}>{t("toolCallDetails.error")}</Text>
-      <ScrollView
-        horizontal
-        nestedScrollEnabled
-        style={ds.jsonScrollErrorCombined}
-        contentContainerStyle={styles.jsonContent}
-        showsHorizontalScrollIndicator={true}
-      >
-        <Text
-          selectable
-          style={[styles.scrollText, styles.errorText]}
-          dataSet={CODE_SURFACE_DATASET}
-        >
-          {errorText}
-        </Text>
-      </ScrollView>
-    </View>
+    <ScrollView
+      nestedScrollEnabled
+      style={
+        ds.resolvedMaxHeight !== undefined &&
+        inlineUnistylesStyle({ maxHeight: ds.resolvedMaxHeight })
+      }
+    >
+      <Text selectable accessibilityRole="alert" style={styles.errorText}>
+        {errorText}
+      </Text>
+    </ScrollView>
+  );
+}
+
+function detailContainsError(detail: ToolCallDetail | undefined, errorText: string): boolean {
+  let output: string | undefined;
+  switch (detail?.type) {
+    case "shell":
+      output = detail.output;
+      break;
+    case "plain_text":
+      output = detail.text;
+      break;
+    case "read":
+      output = detail.content;
+      break;
+  }
+  // Suppress only an exact diagnostic, never output with additional context.
+  return (
+    typeof output === "string" && output.trim().replace(/^error:\s*/i, "") === errorText.trim()
   );
 }
 
@@ -795,7 +803,7 @@ export function ToolCallDetailsContent({
 
   const sections: ReactNode[] = buildDetailSections(toolName, detail, diffLines, ds, t);
 
-  if (errorText) {
+  if (errorText && !detailContainsError(detail, errorText)) {
     sections.push(<ErrorSection key="error" errorText={errorText} ds={ds} />);
   }
 
@@ -986,14 +994,15 @@ const styles = StyleSheet.create((theme) => {
       borderRadius: theme.borderRadius.base,
       backgroundColor: theme.colors.surface2,
     },
-    jsonScrollError: {
-      borderColor: theme.colors.destructive,
-    },
     jsonContent: {
       padding: insets.padding,
     },
     errorText: {
-      color: theme.colors.destructive,
+      color: theme.colors.palette.red[300],
+      fontFamily: theme.fontFamily.ui,
+      fontSize: theme.fontSize.sm,
+      lineHeight: 18,
+      ...(isWeb ? { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } : null),
     },
     emptyStateText: {
       color: theme.colors.foregroundMuted,

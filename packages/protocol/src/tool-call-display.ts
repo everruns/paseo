@@ -59,8 +59,12 @@ function formatErrorText(error: unknown): string | undefined {
   if (typeof error === "string") {
     return error;
   }
-  if (isRecord(error) && typeof error.content === "string") {
-    return error.content;
+  if (isRecord(error)) {
+    const message =
+      readString(error.message) ?? readString(error.error) ?? readString(error.content);
+    if (message) {
+      return message;
+    }
   }
   try {
     return JSON.stringify(error, null, 2);
