@@ -98,10 +98,19 @@ for (const viewport of [
           .first();
         await expect(badge).toBeVisible({ timeout: 30000 });
         await badge.click();
-        await expect(badge.getByText(reason, { exact: false })).toHaveCount(1);
+        const diagnostic = page.getByText(reason, { exact: false });
+        await expect(diagnostic).toHaveCount(1);
+        await expect(diagnostic).toBeInViewport();
         await expect(page.getByText('"message"', { exact: false })).toHaveCount(0);
+        const screenshot = testInfo.outputPath(`tool-failure-${viewport.width}.png`);
+        if (viewport.width < 600) {
+          await expect(page.getByTestId("tool-call-sheet-close")).toBeVisible();
+          await page.screenshot({ path: screenshot });
+        } else {
+          await badge.screenshot({ path: screenshot });
+        }
         await testInfo.attach(`tool-failure-${viewport.width}`, {
-          body: await badge.screenshot(),
+          path: screenshot,
           contentType: "image/png",
         });
       } finally {
