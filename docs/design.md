@@ -195,7 +195,7 @@ Loading is inline by default. `<LoadingSpinner size={14} color={foregroundMuted}
 
 Empty states are short noun phrases. Centered, muted, one or two lines. Sessions screen pairs the empty noun with a single ghost button to navigate back (`packages/app/src/screens/sessions-screen.tsx:74-81`); that pairing is the maximum elaboration. Illustrations and CTAs disguised as empty states are wrong.
 
-Tool failure details show their semantic message as wrapping text, rather than a JSON error box. If the displayed output already contains the same diagnostic, show it once.
+Tool failure details show their semantic message as wrapping text in the theme's `destructive` color, aligned with the tool content, rather than a JSON error box. If the displayed output already contains the same diagnostic, show it once.
 
 Inline errors are a single sentence in `palette.red[300]` `xs`, sitting under the field or inside the card it relates to (`packages/app/src/screens/settings/providers-section.tsx:115-119`).
 

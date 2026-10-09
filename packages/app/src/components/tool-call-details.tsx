@@ -747,6 +747,7 @@ function ErrorSection({ errorText, ds }: { errorText: string; ds: DetailStyles }
   return (
     <ScrollView
       nestedScrollEnabled
+      contentContainerStyle={styles.errorContent}
       style={
         ds.resolvedMaxHeight !== undefined &&
         inlineUnistylesStyle({ maxHeight: ds.resolvedMaxHeight })
@@ -1000,8 +1001,12 @@ const styles = StyleSheet.create((theme) => {
     jsonContent: {
       padding: insets.padding,
     },
+    errorContent: {
+      paddingHorizontal: insets.padding,
+      paddingVertical: theme.spacing[2],
+    },
     errorText: {
-      color: theme.colors.palette.red[300],
+      color: theme.colors.destructive,
       fontFamily: theme.fontFamily.ui,
       fontSize: theme.fontSize.sm,
       lineHeight: 18,
